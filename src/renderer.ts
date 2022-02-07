@@ -5,18 +5,22 @@ import {
   EventProvider,
   Invalidate,
   Navigation,
-  Renderer
+  Program,
+  Renderer,
+  Shader
 } from "webgl-operate";
 
-import { vec3 } from "webgl-operate";
+import { vec3, mat4 } from "webgl-operate";
 
 import { LightsPass } from "./lights-pass";
 
 import { GeometryPass } from "./geometrypass";
 
 import { CuboidPass } from "./cuboid-pass";
-// import { SpherePass } from "./sphere-pass";
-// import { GLTFPass } from "./gltf-pass";
+import { SpherePass } from "./sphere-pass";
+import { GLTFPass } from "./gltf-pass";
+
+import { GeometryVertexShader, GeometryFragmentShader } from "./shaders";
 
 export class TestRenderer extends Renderer {
   protected _defaultFBO: DefaultFramebuffer;
@@ -26,6 +30,9 @@ export class TestRenderer extends Renderer {
 
   protected _lightsPass: LightsPass;
   protected _geometryPass: GeometryPass;
+
+  protected _program: Program;
+  protected _uViewProjection: WebGLUniformLocation;
 
   protected onInitialize(
     context: Context,
@@ -40,9 +47,9 @@ export class TestRenderer extends Renderer {
     this._camera = new Camera();
     this._camera.center = vec3.fromValues(0.0, 0.0, 0.0);
     this._camera.up = vec3.fromValues(0.0, 1.0, 0.0);
-    this._camera.eye = vec3.fromValues(0.0, 1.0, 2.0);
-    this._camera.near = 0.5;
-    this._camera.far = 4.0;
+    this._camera.eye = vec3.fromValues(0.0, 1.0, 4.0);
+    this._camera.near = 0.01;
+    this._camera.far = 32.0;
 
     /* Create and configure navigation */
 
@@ -54,8 +61,30 @@ export class TestRenderer extends Renderer {
     this._lightsPass = new LightsPass(context);
     this._lightsPass.initialize();
 
-    this._geometryPass = new CuboidPass(context);
+    // this._geometryPass = new CuboidPass(context);
+    this._geometryPass = new SpherePass(context);
     this._geometryPass.initialize();
+
+    /* */
+
+    const gl = context.gl;
+
+    const vert = new Shader(context, gl.VERTEX_SHADER, "geometry.vert");
+    vert.initialize(GeometryVertexShader);
+    const frag = new Shader(context, gl.FRAGMENT_SHADER, "geometry.frag");
+    frag.initialize(GeometryFragmentShader);
+
+    this._program = new Program(context, "GeometryProgram");
+    this._program.initialize([vert, frag], false);
+
+    this._program.attribute("a_vertex", 0);
+    this._program.attribute("a_texCoord", 1);
+    this._program.link();
+    this._program.bind();
+
+    this._uViewProjection = this._program.uniform("u_viewProjection");
+    const identity = mat4.identity(mat4.create());
+    gl.uniformMatrix4fv(this._program.uniform("u_model"), false, identity);
 
     return true;
   }
@@ -72,13 +101,12 @@ export class TestRenderer extends Renderer {
       this._camera.aspect = this._canvasSize[0] / this._canvasSize[1];
     }
     if (this._altered.clearColor) {
-      console.log(this._clearColor);
       this._defaultFBO.clearColor(this._clearColor);
     }
     this._navigation.update();
 
-    // this._lightsPass.update();
-    // this._geometryPass.update();
+    this._lightsPass.update();
+    this._geometryPass.update();
 
     return this._altered.any || this._camera.altered;
   }
@@ -93,15 +121,35 @@ export class TestRenderer extends Renderer {
 
     gl.viewport(0, 0, this._frameSize[0], this._frameSize[1]);
 
-    console.log("fo", this._frameSize);
     this._defaultFBO.clear(
       gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT,
       true,
       false
     );
 
-    // this._lightsPass.frame();
-    // this._geometryPass.draw();
+    // Draw Lights
+
+    this._lightsPass.frame();
+
+    // Draw Geometry (Cuboid, Sphere, or GLTF)
+
+    this._program.bind();
+    gl.uniformMatrix4fv(
+      this._uViewProjection,
+      false,
+      this._camera.viewProjection
+    );
+
+    gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.BACK);
+    gl.enable(gl.DEPTH_TEST);
+
+    this._geometryPass.draw();
+
+    this._program.unbind();
+
+    gl.cullFace(gl.BACK);
+    gl.disable(gl.CULL_FACE);
   }
 
   protected onSwap(): void {}

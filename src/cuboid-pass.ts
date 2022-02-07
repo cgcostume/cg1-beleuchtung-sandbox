@@ -21,5 +21,9 @@ export class CuboidPass implements GeometryPass {
 
   public update(): void {}
 
-  public draw(): void {}
+  public draw(): void {
+    this._cuboid.bind();
+    this._cuboid.draw();
+    this._cuboid.unbind();
+  }
 }
