@@ -14,7 +14,7 @@ export const initialize = () => {
   canvas.controller.multiFrameNumber = 1;
   canvas.framePrecision = Wizard.Precision.byte;
   canvas.frameScale = [1.0, 1.0];
-  canvas.clearColor = new Color([0.001, 0.001, 0.001, 1.0]);
+  canvas.clearColor = new Color([0.05, 0.06, 0.07, 1.0]);
 
   const renderer = new TestRenderer();
   canvas.renderer = renderer;
