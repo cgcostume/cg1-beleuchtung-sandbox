@@ -6,11 +6,8 @@ export class LightsPass {
   protected _context: Context;
   protected _renderer: Renderer;
 
-  protected _particleVBO: Buffer;
-  protected _instancesVBO: Buffer;
-
-  protected readonly _uvLocation: GLuint = 0;
-  protected readonly _positionLocation: GLuint = 1;
+  protected _points: Float32Array;
+  protected _pointsBuffer: Buffer;
 
   protected _program: Program;
 
@@ -28,104 +25,117 @@ export class LightsPass {
     const gl = context.gl;
     const gl2facade = context.gl2facade;
 
-    const particle = new Float32Array([
+    this._points = new Float32Array([
+      // x, y, z, r, g, b, data,
+      -1.0,
+      -1.0,
+      -1.0,
+      0.0,
+      0.0,
+      0.0,
+      Math.random() * 16 + 4.0,
       -1.0,
       -1.0,
       +1.0,
+      0.0,
+      0.0,
+      1.0,
+      Math.random() * 16 + 4.0,
+      -1.0,
+      +1.0,
+      -1.0,
+      0.0,
+      1.0,
+      0.0,
+      Math.random() * 16 + 4.0,
       -1.0,
       +1.0,
       +1.0,
+      0.0,
+      1.0,
+      1.0,
+      Math.random() * 16 + 4.0,
+      +1.0,
       -1.0,
-      +1.0
+      -1.0,
+      1.0,
+      0.0,
+      0.0,
+      Math.random() * 16 + 4.0,
+      +1.0,
+      -1.0,
+      +1.0,
+      1.0,
+      0.0,
+      1.0,
+      Math.random() * 16 + 4.0,
+      +1.0,
+      +1.0,
+      -1.0,
+      1.0,
+      1.0,
+      0.0,
+      Math.random() * 16 + 4.0,
+      +1.0,
+      +1.0,
+      +1.0,
+      1.0,
+      1.0,
+      1.0,
+      Math.random() * 16 + 4.0
     ]);
 
-    const floatSize: number = context.byteSizeOfFormat(gl.R32F);
-
-    this._particleVBO = new Buffer(context, "particleVBO");
-    this._particleVBO.initialize(gl.ARRAY_BUFFER);
-    this._particleVBO.attribEnable(
-      this._uvLocation,
-      2,
-      gl.FLOAT,
-      false,
-      2 * floatSize,
-      0,
-      true,
-      false
-    );
-    gl2facade.vertexAttribDivisor(this._uvLocation, 0);
-    this._particleVBO.data(particle, gl.STATIC_DRAW);
-
-    this._instancesVBO = new Buffer(context, "instancesVBO");
-    this._instancesVBO.initialize(gl.ARRAY_BUFFER);
-    this._instancesVBO.attribEnable(
-      this._positionLocation,
-      3,
-      gl.FLOAT,
-      false,
-      3 * floatSize,
-      0,
-      true,
-      false
-    );
-    gl2facade.vertexAttribDivisor(this._positionLocation, 1);
-
-    const data = new Float32Array([2.0, 2.0, 2.0]);
-    this._instancesVBO.data(data, gl.STATIC_DRAW);
+    this._pointsBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this._pointsBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, this._points, gl.STATIC_DRAW);
 
     const vert = new Shader(context, gl.VERTEX_SHADER, "light.vert");
     vert.initialize(`precision lowp float;
-    precision lowp int;
-    
-    in vec2 a_uv;
-    in vec3 a_position;
-    
-    uniform vec2 u_size; // [ point size in px, frame width in px ]
 
-    uniform mat4 u_model;
-    uniform mat4 u_viewProjection;
-      
-    out vec2 v_uv;
-    out vec3 v_vertex;
-    
-    void main()
-    {
-      vec4 p  = u_model * vec4(a_position, 1.0);
-      v_vertex = p.xyz / p.w;
-    
-      gl_Position = u_viewProjection * p;
-      gl_PointSize = u_size[0] * 0.25 * u_size[1];
-    
-      // v_uv = a_uv;
-    
-      // vec3 uv = vec3(a_uv, 0.0);
-      // vec3 u  = vec3(u_view[0][0], u_view[1][0], u_view[2][0]) * uv.x * u_size[0];
-      // vec3 v  = vec3(u_view[0][1], u_view[1][1], u_view[2][1]) * uv.y * u_size[0];
-    
-      // gl_Position = u_viewProjection * vec4(p.xyz + u + v, 1.0);   
-    }
-    `);
+    layout(location = 0) in vec3 a_vertex;
+    layout(location = 1) in vec3 a_color;
+    layout(location = 2) in float a_data;
+
+  uniform mat4 u_viewProjection;
+
+  out vec4 v_color;
+
+  void main()
+  {
+      v_color = vec4(a_color, 1.0);
+
+      gl_Position = u_viewProjection * vec4(a_vertex, 1.0);
+      gl_PointSize = a_data;
+  }
+  `);
     const frag = new Shader(context, gl.FRAGMENT_SHADER, "light.frag");
     frag.initialize(`precision lowp float;
 
-    layout(location = 0) out vec4 fragColor; 
-    
-    in vec3 v_vertex;
-    in vec2 v_uv;
+    layout(location = 0) out vec4 fragColor;
+
+    in vec4 v_color;
 
     void main(void)
     {
-      fragColor = vec4(1.0, 0.0, 0.0, 1.0);
+      vec2 uv = gl_PointCoord.xy * 2.0 - 1.0;
+
+      float zz = dot(uv, uv);
+      if(zz > 1.0)
+            discard;
+
+        fragColor = v_color;
     }
     `);
 
     this._program = new Program(context, "LightProgram");
     this._program.initialize([vert, frag], false);
 
-    this._program.attribute("a_vertex", this._positionLocation);
-    this._program.attribute("a_texCoord", this._uvLocation);
     this._program.link();
     this._program.bind();
+
+    this._program.attribute("a_vertex", 0);
+    this._program.attribute("a_color", 1);
+    this._program.attribute("a_data", 2);
 
     this._uViewProjection = this._program.uniform("u_viewProjection");
     this._uModel = this._program.uniform("u_model");
@@ -139,39 +149,53 @@ export class LightsPass {
     const gl = this._context.gl;
     const gl2facade = this._context.gl2facade;
 
-    gl.enable(gl.CULL_FACE);
-    gl.cullFace(gl.BACK);
     gl.enable(gl.DEPTH_TEST);
 
+    this._program.bind();
     gl.uniformMatrix4fv(
       this._uViewProjection,
       false,
       (this._renderer as any)._camera.viewProjection
     );
-    const pointSize = 10.0;
-    gl.uniform2f(
-      this._program.uniform("u_size"),
-      pointSize,
-      (this._renderer as any)._frameSize[0]
-    );
 
-    this._particleVBO.bind();
-    this._instancesVBO.bind();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this._pointsBuffer);
 
-    const instanceCount = 1; // this._drawRanges[this._drawIndex][1] / 3;
-    this._instancesVBO.attribEnable(
-      this._positionLocation,
+    gl.vertexAttribPointer(
+      0,
       3,
       gl.FLOAT,
-      false,
-      3 * 4,
-      0 * 4,
-      true,
-      false
+      gl.FALSE,
+      7 * Float32Array.BYTES_PER_ELEMENT,
+      0
+    );
+    gl.vertexAttribPointer(
+      1,
+      3,
+      gl.FLOAT,
+      gl.FALSE,
+      7 * Float32Array.BYTES_PER_ELEMENT,
+      3 * Float32Array.BYTES_PER_ELEMENT
+    );
+    gl.vertexAttribPointer(
+      2,
+      1,
+      gl.FLOAT,
+      gl.FALSE,
+      7 * Float32Array.BYTES_PER_ELEMENT,
+      6 * Float32Array.BYTES_PER_ELEMENT
     );
 
-    gl2facade.drawArraysInstanced(gl.POINTS, 0, 1, instanceCount);
+    gl.enableVertexAttribArray(0);
+    gl.enableVertexAttribArray(1);
+    gl.enableVertexAttribArray(2);
 
-    this._program.bind();
+    gl.drawArrays(gl.POINTS, 0, this._points.length / 7);
+    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.DEFAULT_BUFFER);
+
+    gl.disableVertexAttribArray(0);
+    gl.disableVertexAttribArray(1);
+    gl.disableVertexAttribArray(2);
+
+    this._program.unbind();
   }
 }
