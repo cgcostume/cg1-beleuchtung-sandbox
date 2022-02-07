@@ -33,6 +33,7 @@ export class TestRenderer extends Renderer {
 
   protected _program: Program;
   protected _uViewProjection: WebGLUniformLocation;
+  protected _uModel: WebGLUniformLocation;
 
   protected onInitialize(
     context: Context,
@@ -58,12 +59,12 @@ export class TestRenderer extends Renderer {
 
     /* */
 
-    this._lightsPass = new LightsPass(context);
-    this._lightsPass.initialize();
+    this._lightsPass = new LightsPass();
+    this._lightsPass.initialize(context, this);
 
-    // this._geometryPass = new CuboidPass(context);
-    this._geometryPass = new SpherePass(context);
-    this._geometryPass.initialize();
+    // this._geometryPass = new CuboidPass();
+    this._geometryPass = new SpherePass();
+    this._geometryPass.initialize(context, this);
 
     /* */
 
@@ -83,8 +84,9 @@ export class TestRenderer extends Renderer {
     this._program.bind();
 
     this._uViewProjection = this._program.uniform("u_viewProjection");
+    this._uModel = this._program.uniform("u_model");
     const identity = mat4.identity(mat4.create());
-    gl.uniformMatrix4fv(this._program.uniform("u_model"), false, identity);
+    gl.uniformMatrix4fv(this._uModel, false, identity);
 
     return true;
   }

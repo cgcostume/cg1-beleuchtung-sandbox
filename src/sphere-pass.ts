@@ -1,14 +1,14 @@
-import { Context, GeosphereGeometry } from "webgl-operate";
+import { Context, GeosphereGeometry, Renderer } from "webgl-operate";
 import { GeometryPass } from "./geometrypass";
 
 export class SpherePass implements GeometryPass {
   protected _context: Context;
   protected _sphere: GeosphereGeometry;
 
-  constructor(context: Context) {
+  constructor() {}
+  public initialize(context: Context, renderer: Renderer): void {
     this._context = context;
-  }
-  public initialize(): void {
+
     this._sphere = new GeosphereGeometry(this._context, "Sphere");
     this._sphere.initialize();
   }

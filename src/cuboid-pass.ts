@@ -1,4 +1,4 @@
-import { Context, CuboidGeometry } from "webgl-operate";
+import { Context, CuboidGeometry, Renderer } from "webgl-operate";
 import { GeometryPass } from "./geometrypass";
 
 export class CuboidPass implements GeometryPass {
@@ -6,11 +6,10 @@ export class CuboidPass implements GeometryPass {
 
   protected _cuboid: CuboidGeometry;
 
-  constructor(context: Context) {
-    this._context = context;
-  }
+  constructor() {}
 
-  public initialize(): void {
+  public initialize(context: Context, renderer: Renderer): void {
+    this._context = context;
     this._cuboid = new CuboidGeometry(this._context, "Cuboid", true, [
       2.0,
       2.0,

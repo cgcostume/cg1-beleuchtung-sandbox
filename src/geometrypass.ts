@@ -1,5 +1,7 @@
+import { Context, Renderer } from "webgl-operate";
+
 export interface GeometryPass {
-  initialize(): void;
+  initialize(context: Context, renderer: Renderer): void;
   update(): void;
   draw(): void;
 }
