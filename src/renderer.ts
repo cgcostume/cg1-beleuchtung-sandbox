@@ -69,8 +69,8 @@ export class TestRenderer extends Renderer {
     this._lightsPass = new LightsPass();
     this._lightsPass.initialize(context, this);
 
-    this._geometryPass = new CuboidPass();
-    // this._geometryPass = new SpherePass();
+    // this._geometryPass = new CuboidPass();
+    this._geometryPass = new SpherePass();
     this._geometryPass.initialize(context, this);
 
     /* */
