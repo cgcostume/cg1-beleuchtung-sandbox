@@ -69,8 +69,8 @@ export class TestRenderer extends Renderer {
     this._lightsPass = new LightsPass();
     this._lightsPass.initialize(context, this);
 
-    // this._geometryPass = new CuboidPass();
-    this._geometryPass = new SpherePass();
+    this._geometryPass = new CuboidPass();
+    // this._geometryPass = new SpherePass();
     this._geometryPass.initialize(context, this);
 
     /* */
@@ -121,6 +121,15 @@ export class TestRenderer extends Renderer {
     const identity = mat4.identity(mat4.create());
     gl.uniformMatrix4fv(this._uModel, false, identity);
 
+    // grab previews camera eye
+
+    const cameraEyeFromLS = localStorage.getItem("camera.eye");
+    if (cameraEyeFromLS !== null) {
+      this._camera.eye = new Float32Array(
+        Object.values(JSON.parse(cameraEyeFromLS))
+      );
+    }
+
     return true;
   }
 
@@ -138,7 +147,11 @@ export class TestRenderer extends Renderer {
     if (this._altered.clearColor) {
       this._defaultFBO.clearColor(this._clearColor);
     }
+
     this._navigation.update();
+    if (this._camera.altered) {
+      localStorage.setItem("camera.eye", JSON.stringify(this._camera?.eye));
+    }
 
     this._lightsPass.update();
     this._geometryPass.update();
